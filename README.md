@@ -10,7 +10,7 @@ This script detects potential intercept courses that other players may be taking
 
 ## Version
 
-- 1.0.1 (beta)
+- 1.0.5 (beta)
 
 ---
 
