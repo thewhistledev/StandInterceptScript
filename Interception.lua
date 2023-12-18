@@ -3,7 +3,7 @@
 -- Description: This script detects potential intercept courses that 
 --              other players may be taking towards the local player.
 -- Author: whistledev
--- Version: 1.0.5 (beta)
+-- Version: 1.0.8 (beta)
 ----------------------------------------------------------------------
 
 util.require_natives('1660775568-uno')
@@ -15,8 +15,10 @@ local PLAYER_SPEED = 5
 local DEBUG_MODE = false
 local isModActive = false
 local policeBlips = false
-
+local exclusionPeriod = 30
 local modToggleRef = nil
+local playerFirstDetectedTime = {}
+
 
 -- Utility functions (Created nessessary functions to make the code more readable)
 
@@ -78,9 +80,9 @@ local debugToggle = menu.toggle(menu.my_root(), "Debug Mode", {}, "Toggle Debug 
 modToggleRef = modToggle
 
 
-function checkInterceptCourses()
+function checkInterceptCourses() -- Hopefully a fix for the issue where the player is detected as an intercept course when they first load in.
     local all_players = players.list()
-
+    local currentTime = os.time()  -- Get the current time in seconds.
     local local_player_pos = players.get_position(players.user())
 
     for _, player_id in ipairs(all_players) do
@@ -94,13 +96,30 @@ function checkInterceptCourses()
             local projected_pos = v3.add(player_pos, v3.mul(direction, PLAYER_SPEED * PROJECTION_INTERVAL))
             local distance = v3.distance(local_player_pos, projected_pos)
 
-            if distance < debugInfo.closestPlayerDistance then
-                debugInfo.closestPlayerDistance = distance
+            -- Check if the player is newly detected and store the detection time
+            if playerFirstDetectedTime[player_id] == nil then
+                playerFirstDetectedTime[player_id] = currentTime
             end
 
-            if distance < INTERCEPT_DISTANCE then
-                debugInfo.interceptsDetected = debugInfo.interceptsDetected + 1
-                util.toast("Player " .. players.get_name(player_id) .. " is on an intercept course!", TOAST_ABOVE_MAP)
+            -- Calculate time since first detection
+            local timeSinceFirstDetected = currentTime - playerFirstDetectedTime[player_id]
+
+            -- Skip intercept check for players who are within the exclusion period
+            if not(timeSinceFirstDetected < exclusionPeriod) then
+                if distance < debugInfo.closestPlayerDistance then
+                    debugInfo.closestPlayerDistance = distance
+                end
+    
+                if distance < INTERCEPT_DISTANCE then
+                    debugInfo.interceptsDetected = debugInfo.interceptsDetected + 1
+                    util.toast("Player " .. players.get_name(player_id) .. " is on an intercept course!", TOAST_ABOVE_MAP)
+                end
+            end
+        else
+            -- Reset the closest player distance
+            debugInfo.closestPlayerDistance = 0
+            if DEBUG then
+                util.log("Player" .. players.get_name(player_id) .. " just loaded, skipping intercept check.")
             end
         end
     end
