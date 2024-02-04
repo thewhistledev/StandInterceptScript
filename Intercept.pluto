@@ -3,6 +3,7 @@
 -- Description: This script detects potential intercept courses that 
 --              other players may be taking towards the local player.
 -- Author: whistledev
+-- Conversion to Pluto: Maddy
 -- Version: 1.0.5 (beta)
 ----------------------------------------------------------------------
 util.require_natives('1660775568-uno')
