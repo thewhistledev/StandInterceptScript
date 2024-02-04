@@ -1,0 +1,64 @@
+----------------------------------------------------------------------
+-- Script Name: Player Intercept Course Detection
+-- Description: This script detects potential intercept courses that 
+--              other players may be taking towards the local player.
+-- Author: whistledev
+-- Version: 1.0.5 (beta)
+----------------------------------------------------------------------
+util.require_natives('1660775568-uno')
+util.keep_running()
+
+-- Constants
+local INTERCEPT_DISTANCE = 20
+local PROJECTION_INTERVAL = 5
+local PLAYER_SPEED = 5
+local CHECK_INTERVAL = 1000
+
+-- Debug Information
+local debugInfo = {
+    playersDetected = 0,
+    closestPlayerDistance = math.huge,
+    interceptsDetected = 0
+}
+
+-- Utility Functions
+function checkInterceptCourses()
+    local local_player_pos = players.get_position(players.user())
+
+    for _, player_id in ipairs(players.list()) do
+        if player_id ~= players.user() then
+            local player_pos = players.get_position(player_id)
+            local direction = v3.normalise(v3.sub(local_player_pos, player_pos))
+            local projected_pos = v3.add(player_pos, v3.mul(direction, PLAYER_SPEED * PROJECTION_INTERVAL))
+            local distance = v3.distance(local_player_pos, projected_pos)
+
+            if distance < debugInfo.closestPlayerDistance then
+                debugInfo.closestPlayerDistance = distance
+            end
+
+            if distance < INTERCEPT_DISTANCE then
+                debugInfo.interceptsDetected += 1
+                util.toast("Player " .. players.get_name(player_id) .. " is on an intercept course!", TOAST_ABOVE_MAP)
+            end
+        end
+    end
+    debugInfo.playersDetected = #players.list() - 1 -- excluding the local player
+end
+
+-- Options
+local modToggle = menu.my_root():toggle_loop("Intercept Detection Mod", {}, "Toggle the Intercept Detection Mod on/off", function()
+    checkInterceptCourses()
+    util.yield(CHECK_INTERVAL)
+end)
+
+local debugToggle = menu.my_root():toggle_loop("Debug Mode", {}, "Toggle Debug Mode on/off", function()
+    local yOffset = 0.05
+    directx.draw_text(0.01, yOffset, "Players Detected: " .. debugInfo.playersDetected, ALIGN_TOP_LEFT, 1.0, 255, 255, 255, 1.0)
+    yOffset += 0.05
+    directx.draw_text(0.01, yOffset, "Closest Player Distance: " .. string.format("%.2f", debugInfo.closestPlayerDistance), ALIGN_TOP_LEFT, 1.0, 255, 255, 255, 1.0)
+    yOffset += 0.05
+    directx.draw_text(0.01, yOffset, "Intercepts Detected: " .. debugInfo.interceptsDetected, ALIGN_TOP_LEFT, 1.0, 255, 255, 255, 1.0)
+    yOffset += 0.05
+    directx.draw_text(0.01, yOffset, "In a Session?: " .. (NETWORK.NETWORK_IS_SESSION_STARTED() ? "YES" : "NO"), ALIGN_TOP_LEFT, 1.0, 255, 255, 255, 1)
+end)
+
